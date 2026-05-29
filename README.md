@@ -18,6 +18,45 @@ CloudPulse Sentinel is a cloud-native API testing and real-time monitoring frame
 
 ---
 
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     GitHub Actions (CI/CD)                   │
+│                   Triggered on push to main                  │
+└──────────────┬──────────────────────┬───────────────────────┘
+               │                      │
+               ▼                      ▼
+   ┌───────────────────┐   ┌─────────────────────┐
+   │   pytest Suite    │   │    AWS Lambda        │
+   │ GET, POST, PUT,   │   │  Health Monitor      │
+   │ DELETE, Headers   │   │  (Scheduled)         │
+   └────────┬──────────┘   └──────┬──────┬────────┘
+            │                     │      │
+            │ tests               │      │ on failure
+            ▼                     ▼      ▼
+   ┌──────────────────┐  ┌──────────┐  ┌──────────────┐
+   │   REST API       │  │  AWS S3  │  │   AWS SNS    │
+   │  jsonplaceholder │  │ Reports  │  │    Alerts    │
+   └──────────────────┘  └──────────┘  └──────┬───────┘
+            │                                  │
+            ▼                                  ▼
+   ┌──────────────────┐              ┌──────────────────┐
+   │  JSON Schema     │              │   Developer      │
+   │  Validation      │              │  Notification    │
+   └──────────────────┘              └──────────────────┘
+            │
+            ▼
+   ┌──────────────────┐
+   │  Structured      │
+   │  Logger          │
+   └──────────────────┘
+```
+
+**Flow:** Code push → GitHub Actions triggers pytest → Lambda monitors API health → Reports stored in S3 → SNS alert fired on failure → Developer notified instantly.
+
+---
+
 ## 🗂️ Project Structure
 
 ```
@@ -108,6 +147,37 @@ pytest tests/test_health_api.py
 
 ---
 
+## 📊 Sample Results
+
+```
+============================= test session starts ==============================
+platform win32 -- Python 3.11, pytest-7.x, pluggy-1.x
+rootdir: C:\...\CloudPulse Sentinel
+collected 5 items
+
+tests/test_health_api.py::test_health_check          PASSED   [ 20%]
+tests/test_post_api.py::test_create_post             PASSED   [ 40%]
+tests/test_put_api.py::test_update_post              PASSED   [ 60%]
+tests/test_delete_api.py::test_delete_post           PASSED   [ 80%]
+tests/test_headers_api.py::test_response_headers     PASSED   [100%]
+
+============================== 5 passed in 2.31s ===============================
+```
+
+**AWS Lambda Health Check Response:**
+```json
+{
+  "statusCode": 200,
+  "body": {
+    "status_code": 200,
+    "response_time": 0.243,
+    "timestamp": "2024-01-15 10:32:45.123456"
+  }
+}
+```
+
+---
+
 ## ☁️ AWS Architecture
 
 ```
@@ -144,6 +214,18 @@ Configured in `.github/workflows/api-tests.yml`
 | test_put_api.py | PUT — Update resource |
 | test_delete_api.py | DELETE — Remove resource |
 | test_headers_api.py | Headers — Validation |
+
+---
+
+## 🔮 Future Enhancements
+
+- [ ] Add authentication testing (OAuth2, JWT token validation)
+- [ ] Integrate with AWS CloudWatch for real-time dashboards and metrics
+- [ ] Expand test coverage to include performance and load testing
+- [ ] Add Slack/Teams notification support alongside SNS
+- [ ] Implement parallel test execution for faster CI/CD runs
+- [ ] Add database API testing with schema migrations
+- [ ] Build a web dashboard to visualize historical test results from S3
 
 ---
 
